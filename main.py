@@ -47,7 +47,11 @@ def update_bal(user_id, amount):
 
 
 # --- ПАМЯТЬ СЕССИЙ ---
-roulette_sessions = {}
+roulette_games = {
+    chat_id: [
+        {"user": id, "name": "ник", "bet": 100, "color": "red"}
+    ]
+}
 mines_sessions = {}
 
 
@@ -150,29 +154,54 @@ async def top_players(msg: Message):
 # --- РУЛЕТКА С ПОДТВЕРЖДЕНИЕМ "ГО" И ОТМЕНОЙ ---
 @dp.message(F.text.lower().startswith("рулетка"))
 async def roulette_cmd(msg: Message):
+
+    if msg.chat.type == "private":
+        return
+
     parts = msg.text.split()
-    if len(parts) < 2 or not parts[1].isdigit():
-        await msg.reply("Пиши: `рулетка [ставка]`")
+
+    if len(parts) < 3:
+        await msg.reply("Пиши: рулетка [ставка] [цвет]\nПример: рулетка 100 красное")
         return
 
     bet = int(parts[1])
-    bal, _ = get_user(msg.from_user.id, msg.from_user.first_name)
-    if bet > bal or bet <= 0:
-        await msg.reply("❌ Недостаточно MVC!")
+    color = parts[2].lower()
+
+    colors = {
+        "красное": "red",
+        "черное": "black",
+        "зелёное": "green",
+        "зеленое": "green"
+    }
+
+    if color not in colors:
+        await msg.reply("Цвет: красное / черное / зеленое")
         return
 
-    kb = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🔴 x2", callback_data=f"rpick:red:{bet}"),
-                InlineKeyboardButton(text="⚫️ x2", callback_data=f"rpick:black:{bet}"),
-                InlineKeyboardButton(text="🟢 x14", callback_data=f"rpick:green:{bet}"),
-            ],
-            [InlineKeyboardButton(text="↩️ Отмена", callback_data="rcancel")],
-        ]
-    )
-    await msg.reply(f"🎰 Ставка **{bet} MVC**. Выбирай цвет:", reply_markup=kb)
+    color = colors[color]
 
+    bal, _ = get_user(msg.from_user.id, msg.from_user.first_name)
+
+    if bet > bal or bet <= 0:
+        await msg.reply("❌ Недостаточно MVC")
+        return
+
+    chat_id = msg.chat.id
+
+    if chat_id not in roulette_games:
+        roulette_games[chat_id] = []
+
+    roulette_games[chat_id].append({
+        "user": msg.from_user.id,
+        "name": msg.from_user.first_name,
+        "bet": bet,
+        "color": color
+    })
+
+    await msg.reply(
+        f"🎰 {msg.from_user.first_name} поставил {bet} MVC на {parts[2]}\n"
+        f"Напишите **го** чтобы крутить рулетку"
+    )
 
 @dp.callback_query(F.data.startswith("rpick:"))
 async def roulette_pick(call: CallbackQuery):
@@ -213,38 +242,54 @@ async def cancel_bet(msg: Message):
 
 @dp.message(F.text.casefold() == "го")
 async def roulette_go(msg: Message):
-    session = roulette_sessions.get(msg.from_user.id)
-    if not session:
+
+    chat_id = msg.chat.id
+
+    if chat_id not in roulette_games or not roulette_games[chat_id]:
         return
 
-    bet = session["bet"]
-    color = session["color"]
-    bal, _ = get_user(msg.from_user.id, msg.from_user.first_name)
-    if bal < bet:
-        roulette_sessions.pop(msg.from_user.id, None)
-        await msg.reply("❌ Недостаточно средств на момент прокрута.")
-        return
+    spins = ["red", "black", "green"]
+    res = random.choices(spins, weights=[48,48,4])[0]
 
-    spinning_msg = await msg.reply("🎡 Крутим рулетку...")
-    await asyncio.sleep(2)
+    color_text = {
+        "red": "🔴 КРАСНОЕ",
+        "black": "⚫ ЧЕРНОЕ",
+        "green": "🟢 ЗЕЛЕНОЕ"
+    }
 
-    res = random.choices(["red", "black", "green"], weights=[48, 48, 4])[0]
-    update_bal(msg.from_user.id, -bet)
+    text = f"🎡 РУЛЕТКА\nВыпало {color_text[res]}\n\n"
 
-    if color == res:
-        mult = 14 if res == "green" else 2
-        payout = bet * mult
-        update_bal(msg.from_user.id, payout)
+    for bet in roulette_games[chat_id]:
 
-    color_ru = {"red": "красный", "black": "черный", "green": "зеленый"}
-    pick_ru = {"red": "красное", "black": "черное", "green": "зеленое"}
-    result_line = f"цвет: {color_ru[res]} игрок ставка на {pick_ru[color]} {bet}"
+        user = bet["user"]
+        name = bet["name"]
+        color = bet["color"]
+        amount = bet["bet"]
 
-    await spinning_msg.delete()
-    await msg.reply(f"🎰 {result_line}")
-    roulette_sessions.pop(msg.from_user.id, None)
+        bal,_ = get_user(user,name)
 
+        if bal < amount:
+            text += f"{name} — ставка отменена (нет денег)\n"
+            continue
 
+        update_bal(user,-amount)
+
+        if color == res:
+
+            mult = 14 if res == "green" else 2
+            win = amount * mult
+
+            update_bal(user,win)
+
+            text += f"✅ {name} выиграл {win} MVC\n"
+
+        else:
+            text += f"❌ {name} проиграл {amount} MVC\n"
+
+    roulette_games[chat_id] = []
+
+    await msg.reply(text)
+    
 # --- ПЕРЕДАТЬ ---
 @dp.message(lambda msg: msg.text and msg.text.lower().startswith("передать"))
 async def transfer(msg: Message):
