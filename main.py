@@ -47,11 +47,7 @@ def update_bal(user_id, amount):
 
 
 # --- ПАМЯТЬ СЕССИЙ ---
-roulette_games = {
-    chat_id: [
-        {"user": id, "name": "ник", "bet": 100, "color": "red"}
-    ]
-}
+roulette_games = {}
 mines_sessions = {}
 
 
