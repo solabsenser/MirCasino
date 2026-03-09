@@ -6,7 +6,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 # --- НАСТРОЙКИ ---
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("TOKEN")
 ADMIN_ID = os.getenv("ADMIN_ID") 
 # URI из настроек Supabase (Database -> Connection String -> URI)
 DB_URL = os.getenv("DB_URL")
