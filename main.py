@@ -1,6 +1,7 @@
 import asyncio
 import random
 import time
+import os
 import psycopg2
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
