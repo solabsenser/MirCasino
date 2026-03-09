@@ -8,7 +8,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 
 # --- НАСТРОЙКИ ---
 TOKEN = os.getenv("TOKEN")
-ADMIN_ID = os.getenv("ADMIN_ID") 
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
 # URI из настроек Supabase (Database -> Connection String -> URI)
 DB_URL = os.getenv("DB_URL")
 
