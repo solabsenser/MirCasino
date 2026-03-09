@@ -6,8 +6,8 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 # --- НАСТРОЙКИ ---
-TOKEN = '8570825393:AAHoOwiMyyr-Nfjhvf1HCJxnK_om5avSacw'
-ADMIN_ID = 796190250 
+TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = os.getenv("ADMIN_ID") 
 # URI из настроек Supabase (Database -> Connection String -> URI)
 DB_URL = "postgresql://postgres:[ВАШ_ПАРОЛЬ]@db.xxxxxxxx.supabase.co:5432/postgres"
 
