@@ -330,7 +330,7 @@ async def mines_start(msg: Message):
         await msg.reply("❌ Мин должно быть от 1 до 24.")
         return
 
-    game_id = f"{msg.from_user.id}:{int(time.time())}"
+    game_id = str(random.randint(100000,999999))
     mines_sessions[game_id] = {
         "user_id": msg.from_user.id,
         "mines": set(random.sample(range(25), bombs)),
