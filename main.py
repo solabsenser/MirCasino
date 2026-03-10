@@ -365,11 +365,16 @@ def gen_mines_kb(game_id, reveal_all=False):
 
 @dp.callback_query(F.data.startswith("m:"))
 async def mines_logic(call: CallbackQuery):
+
+    await call.answer()  # обязательно отвечаем Telegram
+
     _, g_id, idx = call.data.split(":", 2)
+
     if g_id not in mines_sessions:
         return
 
     state = mines_sessions[g_id]
+
     if state["user_id"] != call.from_user.id:
         await call.answer("Это не твоя игра", show_alert=True)
         return
@@ -377,32 +382,50 @@ async def mines_logic(call: CallbackQuery):
     if idx == "cancel":
         refund = state["bet"]
         update_bal(call.from_user.id, refund)
-        await call.message.edit_text(f"↩️ Ставка отменена. Возврат: **{refund} MVC**")
+
+        await call.message.edit_text(
+            f"↩️ Ставка отменена. Возврат: {refund} MVC"
+        )
+
         del mines_sessions[g_id]
         return
 
     if idx == "stop":
         mult = mines_multiplier(len(state["opened"]), state["bombs"])
         win = int(state["bet"] * mult)
+
         update_bal(call.from_user.id, win)
-        await call.message.edit_text(f"💰 Ты забрал: **{win} MVC** (x{mult})")
+
+        await call.message.edit_text(
+            f"💰 Забрано: {win} MVC (x{mult})"
+        )
+
         del mines_sessions[g_id]
         return
 
     cell = int(idx)
+
     if cell in state["opened"]:
         await call.answer("Клетка уже открыта")
         return
 
     if cell in state["mines"]:
-        await call.message.edit_text("💥 БАБАХ! Ты попал на мину.", reply_markup=gen_mines_kb(g_id, True))
+
+        await call.message.edit_text(
+            "💥 БУМ! Ты попал на мину.",
+            reply_markup=gen_mines_kb(g_id, True)
+        )
+
         del mines_sessions[g_id]
+
     else:
         state["opened"].add(cell)
+
         mult = mines_multiplier(len(state["opened"]), state["bombs"])
+
         await call.message.edit_text(
-            f"✅ Безопасно! Открыто: {len(state['opened'])} | Текущий множитель: x{mult}",
-            reply_markup=gen_mines_kb(g_id),
+            f"✅ Безопасно\nОткрыто клеток: {len(state['opened'])}\nМножитель: x{mult}",
+            reply_markup=gen_mines_kb(g_id)
         )
 
 
