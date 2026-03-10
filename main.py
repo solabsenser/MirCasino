@@ -4,6 +4,7 @@ import random
 import time
 
 import psycopg2
+from aiogram.enums import ParseMode
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -12,7 +13,7 @@ TOKEN = os.getenv("TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 DB_URL = os.getenv("DB_URL")
 
-bot = Bot(token=TOKEN)
+bot = Bot(token=TOKEN, parse_mode=ParseMode.MARKDOWN)
 dp = Dispatcher()
 
 # --- БАЗА ДАННЫХ ---
