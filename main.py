@@ -53,6 +53,7 @@ def update_bal(user_id, amount):
 
 # --- ПАМЯТЬ СЕССИЙ ---
 roulette_games = {}
+roulette_sessions = {}
 mines_sessions = {}
 
 
@@ -165,7 +166,7 @@ black_numbers = {
 }
 
 
-@dp.message()
+@dp.message(lambda msg: bool(msg.text and len(msg.text.lower().split()) == 2 and msg.text.lower().split()[0].isdigit()))
 async def roulette_cmd(msg: Message):
 
     if msg.chat.type == "private":
@@ -293,6 +294,9 @@ async def cancel_bet(msg: Message):
 
 @dp.message(F.text.casefold() == "го")
 async def roulette_go(msg: Message):
+
+    if msg.chat.type == "private":
+        return
 
     chat_id = msg.chat.id
 
