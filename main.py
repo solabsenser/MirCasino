@@ -333,7 +333,8 @@ async def roulette_go(msg: Message):
 
 
     result = random.randint(0,36)
-        if chat_id not in roulette_history:
+
+    if chat_id not in roulette_history:
         roulette_history[chat_id] = []
 
     roulette_history[chat_id].append(result)
@@ -341,14 +342,16 @@ async def roulette_go(msg: Message):
     if len(roulette_history[chat_id]) > 10:
         roulette_history[chat_id].pop(0)
 
+
     if result == 0:
         color = "green"
+
     elif result in red_numbers:
         color = "red"
+
     else:
         color = "black"
-
-
+        
     color_text = {
         "red": "🔴 КРАСНОЕ",
         "black": "⚫ ЧЕРНОЕ",
