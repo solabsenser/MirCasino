@@ -220,10 +220,10 @@ async def roulette_cmd(msg: Message):
     if bet_type in colors:
         bet_type = colors[bet_type]
 
-    elif bet_type in ["чет","чёт"]:
+    elif bet_type in ["чет","чёт","четное","чётное"]:
         bet_type = "even"
 
-    elif bet_type == "нечет":
+    elif bet_type == ["нечет","нечетное","нечёт","нечётное"]:
         bet_type = "odd"
 
     elif bet_type in ["1-12","13-24","25-36"]:
