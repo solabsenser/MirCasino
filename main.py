@@ -153,92 +153,142 @@ async def top_players(msg: Message):
 
 
 # --- РУЛЕТКА С ПОДТВЕРЖДЕНИЕМ "ГО" И ОТМЕНОЙ ---
-@dp.message(F.text.lower().startswith("рулетка"))
+
+red_numbers = {
+1,3,5,7,9,12,14,16,18,
+19,21,23,25,27,30,32,34,36
+}
+
+black_numbers = {
+2,4,6,8,10,11,13,15,17,
+20,22,24,26,28,29,31,33,35
+}
+
+
+@dp.message()
 async def roulette_cmd(msg: Message):
 
     if msg.chat.type == "private":
         return
 
-    parts = msg.text.split()
+    parts = msg.text.lower().split()
 
-    if len(parts) < 3:
-        await msg.reply("Пиши: рулетка [ставка] [цвет]\nПример: рулетка 100 красное")
+    if len(parts) != 2:
         return
 
-    bet = int(parts[1])
-    color = parts[2].lower()
+    if not parts[0].isdigit():
+        return
+
+    bet = int(parts[0])
+    bet_type = parts[1]
+    value = None
 
     colors = {
-        "красное": "red",
-        "черное": "black",
-        "зелёное": "green",
-        "зеленое": "green"
+        "к": "red",
+        "ч": "black"
     }
 
-    if color not in colors:
-        await msg.reply("Цвет: красное / черное / зеленое")
+    if bet_type in colors:
+        bet_type = colors[bet_type]
+
+    elif bet_type in ["чет","чёт"]:
+        bet_type = "even"
+
+    elif bet_type == "нечет":
+        bet_type = "odd"
+
+    elif bet_type in ["1-12","13-24","25-36"]:
+        value = bet_type
+        bet_type = "range"
+
+    elif bet_type.isdigit():
+
+        num = int(bet_type)
+
+        if 0 <= num <= 36:
+            value = num
+            bet_type = "number"
+        else:
+            return
+
+    else:
         return
 
-    color = colors[color]
 
-    bal, _ = get_user(msg.from_user.id, msg.from_user.first_name)
+    bal,_ = get_user(msg.from_user.id, msg.from_user.first_name)
 
     if bet > bal or bet <= 0:
         await msg.reply("❌ Недостаточно MVC")
         return
+
 
     chat_id = msg.chat.id
 
     if chat_id not in roulette_games:
         roulette_games[chat_id] = []
 
+
     roulette_games[chat_id].append({
         "user": msg.from_user.id,
         "name": msg.from_user.first_name,
         "bet": bet,
-        "color": color
+        "type": bet_type,
+        "value": value
     })
 
+
     await msg.reply(
-        f"🎰 {msg.from_user.first_name} поставил {bet} MVC на {parts[2]}\n"
+        f"🎰 {msg.from_user.first_name} поставил {bet} MVC\n"
         f"Напишите **го** чтобы крутить рулетку"
     )
 
+
 @dp.callback_query(F.data.startswith("rpick:"))
 async def roulette_pick(call: CallbackQuery):
+
     _, color, bet_str = call.data.split(":")
     bet = int(bet_str)
-    bal, _ = get_user(call.from_user.id, call.from_user.first_name)
+
+    bal,_ = get_user(call.from_user.id, call.from_user.first_name)
+
     if bal < bet:
         await call.answer("Недостаточно денег!", show_alert=True)
         return
 
     roulette_sessions[call.from_user.id] = {"bet": bet, "color": color}
+
     color_txt = {"red": "красное", "black": "черное", "green": "зеленое"}[color]
+
     await call.message.edit_text(
         f"✅ Принято: ставка **{bet} MVC** на **{color_txt}**.\n"
-        "Напиши `го`, чтобы начать крутить, или `отмена` для отмены ставки."
+        "Напиши `го`, чтобы начать крутить, или `отмена`."
     )
 
 
 @dp.callback_query(F.data == "rcancel")
 async def roulette_cancel_button(call: CallbackQuery):
+
     roulette_sessions.pop(call.from_user.id, None)
+
     await call.message.edit_text("↩️ Ставка отменена.")
 
 
 @dp.message(F.text.casefold() == "отмена")
 async def cancel_bet(msg: Message):
-    had_roulette = roulette_sessions.pop(msg.from_user.id, None) is not None
 
-    mine_keys = [k for k, v in mines_sessions.items() if v["user_id"] == msg.from_user.id]
-    for k in mine_keys:
-        del mines_sessions[k]
+    chat_id = msg.chat.id
 
-    if had_roulette or mine_keys:
-        await msg.reply("↩️ Активная ставка отменена.")
+    if chat_id in roulette_games:
+
+        roulette_games[chat_id] = [
+            x for x in roulette_games[chat_id]
+            if x["user"] != msg.from_user.id
+        ]
+
+        await msg.reply("↩️ Ставка отменена.")
+
     else:
-        await msg.reply("Нет активной ставки для отмены.")
+        await msg.reply("Нет активной ставки.")
 
 
 @dp.message(F.text.casefold() == "го")
@@ -249,8 +299,16 @@ async def roulette_go(msg: Message):
     if chat_id not in roulette_games or not roulette_games[chat_id]:
         return
 
-    spins = ["red", "black", "green"]
-    res = random.choices(spins, weights=[48,48,4])[0]
+
+    result = random.randint(0,36)
+
+    if result == 0:
+        color = "green"
+    elif result in red_numbers:
+        color = "red"
+    else:
+        color = "black"
+
 
     color_text = {
         "red": "🔴 КРАСНОЕ",
@@ -258,13 +316,16 @@ async def roulette_go(msg: Message):
         "green": "🟢 ЗЕЛЕНОЕ"
     }
 
-    text = f"🎡 РУЛЕТКА\nВыпало {color_text[res]}\n\n"
+
+    text = f"🎡 РУЛЕТКА\nВыпало {result} {color_text[color]}\n\n"
+
 
     for bet in roulette_games[chat_id]:
 
         user = bet["user"]
         name = bet["name"]
-        color = bet["color"]
+        bet_type = bet["type"]
+        value = bet["value"]
         amount = bet["bet"]
 
         bal,_ = get_user(user,name)
@@ -273,19 +334,55 @@ async def roulette_go(msg: Message):
             text += f"{name} — ставка отменена (нет денег)\n"
             continue
 
+
         update_bal(user,-amount)
 
-        if color == res:
+        win = 0
 
-            mult = 14 if res == "green" else 2
-            win = amount * mult
+
+        if bet_type == "red" and result in red_numbers:
+            win = amount * 2
+
+        elif bet_type == "black" and result in black_numbers:
+            win = amount * 2
+
+        elif bet_type == "green" and result == 0:
+            win = amount * 14
+
+        elif bet_type == "even" and result != 0 and result % 2 == 0:
+            win = amount * 2
+
+        elif bet_type == "odd" and result % 2 == 1:
+            win = amount * 2
+
+        elif bet_type == "number":
+
+            if result == value:
+                win = amount * 36
+
+
+        elif bet_type == "range":
+
+            if value == "1-12" and 1 <= result <= 12:
+                win = amount * 3
+
+            elif value == "13-24" and 13 <= result <= 24:
+                win = amount * 3
+
+            elif value == "25-36" and 25 <= result <= 36:
+                win = amount * 3
+
+
+        if win > 0:
 
             update_bal(user,win)
 
             text += f"✅ {name} выиграл {win} MVC\n"
 
         else:
+
             text += f"❌ {name} проиграл {amount} MVC\n"
+
 
     roulette_games[chat_id] = []
 
