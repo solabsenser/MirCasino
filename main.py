@@ -55,7 +55,7 @@ def update_bal(user_id, amount):
 roulette_games = {}
 roulette_sessions = {}
 mines_sessions = {}
-
+roulette_history = {}
 
 # --- ЛОГИКА ---
 @dp.message(F.chat.type == "private")
@@ -151,8 +151,36 @@ async def top_players(msg: Message):
         prefix = medals[i - 1] if i <= 3 else f"{i}."
         lines.append(f"{prefix} {username}: **{bal} MVC**")
     await msg.reply("\n".join(lines))
+    
 
+@dp.message(F.text.casefold() == "лог")
+async def roulette_log(msg: Message):
 
+    chat_id = msg.chat.id
+
+    if chat_id not in roulette_history or not roulette_history[chat_id]:
+        await msg.reply("История рулетки пуста.")
+        return
+
+    nums = roulette_history[chat_id]
+
+    text = "📊 Последние 10 чисел:\n\n"
+
+    for n in reversed(nums):
+
+        if n == 0:
+            color = "🟢"
+
+        elif n in red_numbers:
+            color = "🔴"
+
+        else:
+            color = "⚫"
+
+        text += f"{n}{color}\n"
+
+    await msg.reply(text)
+    
 # --- РУЛЕТКА С ПОДТВЕРЖДЕНИЕМ "ГО" И ОТМЕНОЙ ---
 
 red_numbers = {
@@ -305,6 +333,13 @@ async def roulette_go(msg: Message):
 
 
     result = random.randint(0,36)
+        if chat_id not in roulette_history:
+        roulette_history[chat_id] = []
+
+    roulette_history[chat_id].append(result)
+
+    if len(roulette_history[chat_id]) > 10:
+        roulette_history[chat_id].pop(0)
 
     if result == 0:
         color = "green"
